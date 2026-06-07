@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jafurah Mud Plant - Diesel Log Sheet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+    <script>
+        // Synchronized with your trucks-kilometer-tracker project
+        const firebaseConfig = {
+            apiKey: "AIzaSyAzYiADXgbee3ze6XTiFmCvYj8v8tNKiBA",
+            authDomain: "trucks-kilometer-tracker.firebaseapp.com",
+            databaseURL: "https://trucks-kilometer-tracker-default-rtdb.firebaseio.com", 
+            projectId: "trucks-kilometer-tracker",
+            storageBucket: "trucks-kilometer-tracker.firebasestorage.app",
+            messagingSenderId: "902065775203",
+            appId: "1:902065775203:web:7692fc74ad9a8099c54e56",
+            measurementId: "G-KYZJ890FWF"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+    </script>
+
+    <div id="authOverlay" class="fixed inset-0 bg-blue-900 bg-opacity-40 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8 transform transition duration-300 border border-gray-100">
+            <div class="text-center mb-6">
+                <div class="inline-flex p-3 rounded-full bg-blue-50 text-blue-900 mb-2 font-black text-xl tracking-wider border border-blue-100">JMP</div>
+                <h2 class="text-2xl font-bold text-gray-800" id="authTitle">Sign In to Dashboard</h2>
+                <p class="text-xs text-gray-500 mt-1" id="authSubtitle">Diesel Tracking Operational Network</p>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Operator User ID</label>
+                    <input type="text" id="loginUser" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter username">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" id="loginPass" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
+                </div>
+                <div class="text-right">
+                    <button type="button" onclick="switchAuthView('forgot')" class="text-xs font-medium text-blue-600 hover:underline">Forgot Password?</button>
+                </div>
+                <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-2.5 px-4 rounded-lg shadow transition">Authenticate</button>
+                <p class="text-xs text-center text-gray-500 pt-2">New terminal system operator? <button type="button" onclick="switchAuthView('signup')" class="text-blue-600 font-bold hover:underline">Sign Up</button></p>
+            </form>
+
+            <form id="signUpForm" onsubmit="handleSignUp(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Create Operator User ID</label>
+                    <input type="text" id="regUser" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., operator_jogi">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Create Access Password</label>
+                    <input type="password" id="regPass" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Min. 6 alphanumeric characters">
+                </div>
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-lg shadow transition">Register Operator Account</button>
+                <p class="text-xs text-center text-gray-500 pt-2">Already have an active account profile? <button type="button" onclick="switchAuthView('login')" class="text-blue-600 font-bold hover:underline">Log In</button></p>
+            </form>
+
+            <form id="forgotForm" onsubmit="handlePasswordRecovery(event)" class="space-y-4 hidden">
+                <p class="text-xs text-gray-600 leading-relaxed bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    To retrieve or verify operator profile credentials, enter the targeted User ID below to confirm safety credentials stored within the application system database.
+                </p>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Operator User ID</label>
+                    <input type="text" id="recoveryUser" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your registered username">
+                </div>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-lg shadow transition">Check Database Credentials</button>
+                <p class="text-xs text-center text-gray-500 pt-2"><button type="button" onclick="switchAuthView('login')" class="text-blue-600 font-bold hover:underline">← Back to Log In</button></p>
+            </form>
+        </div>
+    </div>
+
+
+    <div class="max-w-7xl mx-auto p-2 sm:p-4 md:p-6 lg:p-8">
+        <header class="bg-blue-900 text-white p-4 rounded-t-lg shadow-md mb-6 flex items-center justify-between">
+            <div>
+                <h1 class="text-lg sm:text-xl font-bold tracking-wide uppercase">Jafurah Mud Plant Support Unit</h1>
+                <p class="text-xs text-blue-200">Diesel Log Sheet Tracker</p>
+            </div>
+            <button onclick="terminateSession()" class="text-xs bg-red-700 hover:bg-red-800 text-white px-3 py-1.5 font-bold rounded shadow transition">Exit Session</button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md lg:col-span-1">
+                <h2 class="text-lg font-semibold border-b pb-2 mb-4 text-gray-700">Log Today's Reading</h2>
+                <form id="logForm" onsubmit="saveLogEntry(event)">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Select Date First</label>
+                        <input type="date" id="entryDate" required class="w-full px-3 py-2 border rounded-md bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Truck Number</label>
+                        <input type="text" id="truckNo" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 4591" oninput="fetchLastTruckRecord()">
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2 mb-4 bg-gray-50 p-3 rounded-md text-xs border border-gray-200">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Last Filled Date:</span>
+                            <span id="lastDate" class="font-bold text-gray-700">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Last Meter Reading (KM):</span>
+                            <span id="lastKM" class="font-bold text-gray-700">0</span>
+                        </div>
+                        <div class="flex justify-between border-t pt-1 mt-1">
+                            <span class="text-gray-500">Last Run Kilometre:</span>
+                            <span id="lastRunKM" class="font-bold text-blue-700">0</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Today's Meter Reading (KM)</label>
+                        <input type="number" id="todayKM" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter finish KM" oninput="calculateTotalRun()">
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Calculated Total Run (KM)</label>
+                        <div id="totalRunDisplay" class="w-full px-3 py-2 bg-blue-50 border border-blue-300 rounded-md font-extrabold text-blue-800 text-2xl tracking-wide">0</div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-md shadow transition duration-150">Save Record</button>
+                </form>
+            </div>
+
+            <div class="bg-white p-4 sm:p-6 rounded-lg shadow-md lg:col-span-2 flex flex-col">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4 mb-4">
+                    <h2 class="text-lg font-semibold text-gray-700">Monthly Logs & Management</h2>
+                    
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="exportToCSV()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium py-1.5 px-3 rounded transition">Export CSV</button>
+                        <label class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium py-1.5 px-3 rounded cursor-pointer transition">
+                            Import CSV
+                            <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="importFromCSV(event)">
+                        </label>
+                        <button onclick="rolloverToNextMonth()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium py-1.5 px-3 rounded transition">Rollover Month</button>
+                    </div>
+                </div>
+
+                <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Filter View Table By Date</label>
+                        <input type="date" id="filterDate" class="w-full px-3 py-1.5 border text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="loadRecordsTable()">
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <div class="flex-grow">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Filter By Truck Number</label>
+                            <input type="text" id="filterTruckNo" class="w-full px-3 py-1.5 border text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="e.g., 4591" oninput="loadRecordsTable()">
+                        </div>
+                        <button onclick="resetFilter()" class="text-xs text-blue-600 hover:underline pt-5 whitespace-nowrap">Clear</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto flex-grow max-h-[420px] border border-gray-300 rounded-md">
+                    <table class="min-w-full table-fixed divide-y divide-gray-300 text-sm border-collapse">
+                        <thead class="bg-gray-100 sticky top-0 z-10">
+                            <tr>
+                                <th class="w-[18%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Truck No</th>
+                                <th class="w-[20%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Date</th>
+                                <th class="w-[18%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Start KM</th>
+                                <th class="w-[18%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Finish KM</th>
+                                <th class="w-[16%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Total Run</th>
+                                <th class="w-[10%] px-2 py-3 text-center font-semibold text-gray-600 tracking-wider border border-gray-300">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTableBody" class="bg-white divide-y divide-gray-200">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AUTHENTICATION MANAGEMENT LAYER SYSTEM CONTROLLER LOGIC
+        function switchAuthView(viewState) {
+            const lForm = document.getElementById('loginForm');
+            const sForm = document.getElementById('signUpForm');
+            const fForm = document.getElementById('forgotForm');
+            const title = document.getElementById('authTitle');
+
+            lForm.classList.add('hidden');
+            sForm.classList.add('hidden');
+            fForm.classList.add('hidden');
+
+            if(viewState === 'login') {
+                lForm.classList.remove('hidden');
+                title.innerText = "Sign In to Dashboard";
+            } else if (viewState === 'signup') {
+                sForm.classList.remove('hidden');
+                title.innerText = "Register New Operator";
+            } else if (viewState === 'forgot') {
+                fForm.classList.remove('hidden');
+                title.innerText = "Account Password Recovery";
+            }
+        }
+
+        function handleSignUp(e) {
+            e.preventDefault();
+            const user = document.getElementById('regUser').value.trim().toLowerCase();
+            const pass = document.getElementById('regPass').value;
+
+            if(user.length < 3 || pass.length < 6) {
+                alert("Error: Username must be 3+ characters and Password 6+ characters long.");
+                return;
+            }
+
+            db.ref(`System_Operators/${user}`).once('value').then(snapshot => {
+                if(snapshot.exists()) {
+                    alert("Account Registration Error: Operator User ID already exists inside system context.");
+                } else {
+                    db.ref(`System_Operators/${user}`).set({ password: pass }).then(() => {
+                        alert("Operator registration successful! Proceeding to terminal dashboard context.");
+                        launchAuthorizedSession(user);
+                    });
+                }
+            });
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const user = document.getElementById('loginUser').value.trim().toLowerCase();
+            const pass = document.getElementById('loginPass').value;
+
+            db.ref(`System_Operators/${user}`).once('value').then(snapshot => {
+                if(snapshot.exists() && snapshot.val().password === pass) {
+                    launchAuthorizedSession(user);
+                } else {
+                    alert("Access Denied: Invalid combination parameters for User ID or password matching profiles.");
+                }
+            });
+        }
+
+        function handlePasswordRecovery(e) {
+            e.preventDefault();
+            const user = document.getElementById('recoveryUser').value.trim().toLowerCase();
+
+            db.ref(`System_Operators/${user}`).once('value').then(snapshot => {
+                if(snapshot.exists()) {
+                    alert(`Account Identity Verified!\nYour Registered Backup Access Key is: ${snapshot.val().password}`);
+                    switchAuthView('login');
+                } else {
+                    alert("Query Mismatch: The requested User ID does not exist in our database nodes.");
+                }
+            });
+        }
+
+        function launchAuthorizedSession(username) {
+            localStorage.setItem('active_operator_token', username);
+            document.getElementById('authOverlay').classList.add('hidden');
+            loadRecordsTable();
+        }
+
+        function verifyActiveSessionState() {
+            const token = localStorage.getItem('active_operator_token');
+            if (token) {
+                document.getElementById('authOverlay').classList.add('hidden');
+            } else {
+                document.getElementById('authOverlay').classList.remove('hidden');
+            }
+        }
+
+        function terminateSession() {
+            if(confirm("Terminate dashboard connection and clear active session metrics?")) {
+                localStorage.removeItem('active_operator_token');
+                document.getElementById('loginForm').reset();
+                document.getElementById('signUpForm').reset();
+                document.getElementById('forgotForm').reset();
+                switchAuthView('login');
+                verifyActiveSessionState();
+            }
+        }
+
+
+        // DATA LOGISTICS PIPELINE MANAGEMENT ENGINES
+        document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+
+        function getYearMonthKey(dateStr) {
+            const dateObj = new Date(dateStr);
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            return `${year}_${month}`;
+        }
+
+        function fetchLastTruckRecord() {
+            const truckNo = document.getElementById('truckNo').value.trim();
+            if (!truckNo) {
+                clearMasterFields();
+                return;
+            }
+
+            db.ref(`Trucks_Master/${truckNo}`).once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    document.getElementById('lastDate').innerText = data.Last_Filled_Date || '-';
+                    document.getElementById('lastKM').innerText = data.Last_KM_Reading || '0';
+                    document.getElementById('lastRunKM').innerText = data.Last_Total_Run || '0';
+                } else {
+                    clearMasterFields();
+                }
+                calculateTotalRun();
+            });
+        }
+
+        function clearMasterFields() {
+            document.getElementById('lastDate').innerText = '-';
+            document.getElementById('lastKM').innerText = '0';
+            document.getElementById('lastRunKM').innerText = '0';
+        }
+
+        function calculateTotalRun() {
+            const lastKM = parseFloat(document.getElementById('lastKM').innerText) || 0;
+            const todayKM = parseFloat(document.getElementById('todayKM').value) || 0;
+            
+            if (todayKM > 0 && todayKM >= lastKM) {
+                document.getElementById('totalRunDisplay').innerText = (todayKM - lastKM).toFixed(1);
+            } else {
+                document.getElementById('totalRunDisplay').innerText = '0';
+            }
+        }
+
+        function saveLogEntry(e) {
+            e.preventDefault();
+            const selectedDate = document.getElementById('entryDate').value;
+            const truckNo = document.getElementById('truckNo').value.trim();
+            const lastKM = parseFloat(document.getElementById('lastKM').innerText) || 0;
+            const todayKM = parseFloat(document.getElementById('todayKM').value);
+            const totalRun = parseFloat(document.getElementById('totalRunDisplay').innerText);
+            const currentMonth = getYearMonthKey(selectedDate);
+
+            if (todayKM < lastKM) {
+                alert("Error: Today's reading cannot be lower than the previous odometer baseline.");
+                return;
+            }
+
+            const recordEntry = {
+                Start_KM: lastKM,
+                Finish_KM: todayKM,
+                Total_Run: totalRun,
+                Timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            const masterUpdate = {
+                Last_KM_Reading: todayKM,
+                Last_Filled_Date: selectedDate,
+                Last_Total_Run: totalRun
+            };
+
+            const updates = {};
+            updates[`Monthly_Records/${currentMonth}/${truckNo}/${selectedDate}`] = recordEntry;
+            updates[`Trucks_Master/${truckNo}`] = masterUpdate;
+
+            db.ref().update(updates).then(() => {
+                alert(`Record committed successfully for Truck ${truckNo}!`);
+                document.getElementById('truckNo').value = '';
+                document.getElementById('todayKM').value = '';
+                clearMasterFields();
+                document.getElementById('totalRunDisplay').innerText = '0';
+                loadRecordsTable();
+            }).catch(err => alert("Error syncing configuration with database: " + err.message));
+        }
+
+        // Rectification and Overwrite Execution Engine
+        function rectifyEntry(truckNo, dateLog, startKM, finishKM) {
+            document.getElementById('entryDate').value = dateLog;
+            document.getElementById('truckNo').value = truckNo;
+            document.getElementById('lastKM').innerText = startKM;
+            document.getElementById('todayKM').value = finishKM;
+            
+            // Re-fetch historical baseline for full synchronization context tracking
+            db.ref(`Trucks_Master/${truckNo}`).once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    document.getElementById('lastDate').innerText = snapshot.val().Last_Filled_Date || '-';
+                    document.getElementById('lastRunKM').innerText = snapshot.val().Last_Total_Run || '0';
+                }
+                calculateTotalRun();
+                document.getElementById('todayKM').focus();
+            });
+        }
+
+        // Unwanted Entry Deletion Pipeline Execution Routines
+        function deleteEntry(truckNo, dateLog) {
+            if (!confirm(`Are you sure you want to permanently delete the log entry for Truck ${truckNo} on ${dateLog}?`)) return;
+
+            const targetMonth = getYearMonthKey(dateLog);
+            
+            // Step 1: Remove targeted node structure from current monthly timeline tree branch
+            db.ref(`Monthly_Records/${targetMonth}/${truckNo}/${dateLog}`).remove().then(() => {
+                
+                // Step 2: Query remaining logs for the same truck to correctly re-assign Master balances
+                db.ref(`Monthly_Records/${targetMonth}/${truckNo}`).orderByKey().limitToLast(1).once('value').then((snapshot) => {
+                    if (snapshot.exists()) {
+                        let lastAvailableDate = "";
+                        let lastAvailableMetrics = null;
+                        
+                        snapshot.forEach((child) => {
+                            lastAvailableDate = child.key;
+                            lastAvailableMetrics = child.val();
+                        });
+
+                        // Rollback configuration indexes to the nearest matching previous entry state data
+                        db.ref(`Trucks_Master/${truckNo}`).set({
+                            Last_KM_Reading: lastAvailableMetrics.Finish_KM,
+                            Last_Filled_Date: lastAvailableDate,
+                            Last_Total_Run: lastAvailableMetrics.Total_Run
+                        });
+                    } else {
+                        // Completely wipe Master baseline profile tracker details if no log records remain
+                        db.ref(`Trucks_Master/${truckNo}`).remove();
+                    }
+                    
+                    alert("Log entry purged successfully from database context.");
+                    loadRecordsTable();
+                });
+            }).catch(err => alert("Deletion script runtime error: " + err.message));
+        }
+
+        function loadRecordsTable() {
+            if(!localStorage.getItem('active_operator_token')) return; 
+
+            const filterDate = document.getElementById('filterDate').value; 
+            const filterTruckNo = document.getElementById('filterTruckNo').value.trim().toLowerCase();
+            const tableBody = document.getElementById('recordsTableBody');
+            tableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-400 border border-gray-300">Loading records context...</td></tr>';
+
+            let targetMonth = getYearMonthKey(document.getElementById('entryDate').value || new Date());
+            if (filterDate) {
+                targetMonth = getYearMonthKey(filterDate);
+            }
+
+            db.ref(`Monthly_Records/${targetMonth}`).once('value').then((snapshot) => {
+                tableBody.innerHTML = '';
+                let dataFound = false;
+                let calculatedMonthAccumTotal = 0;
+
+                if (snapshot.exists()) {
+                    snapshot.forEach((truckSnap) => {
+                        const truckNo = truckSnap.key;
+                        
+                        if (filterTruckNo && !truckNo.toLowerCase().includes(filterTruckNo)) return;
+
+                        truckSnap.forEach((dateSnap) => {
+                            const entryDate = dateSnap.key;
+                            
+                            if (filterDate && filterDate !== entryDate) return;
+
+                            const metrics = dateSnap.val();
+                            dataFound = true;
+                            calculatedMonthAccumTotal += parseFloat(metrics.Total_Run) || 0;
+
+                            const row = `
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-3 py-2.5 font-semibold text-gray-700 border border-gray-300">${truckNo}</td>
+                                    <td class="px-3 py-2.5 text-gray-500 border border-gray-300">${entryDate}</td>
+                                    <td class="px-3 py-2.5 text-gray-600 border border-gray-300">${metrics.Start_KM}</td>
+                                    <td class="px-3 py-2.5 text-gray-600 border border-gray-300">${metrics.Finish_KM}</td>
+                                    <td class="px-3 py-2.5 font-bold text-blue-700 border border-gray-300">${metrics.Total_Run}</td>
+                                    <td class="px-2 py-2.5 text-center border border-gray-300 whitespace-nowrap space-x-2">
+                                        <button onclick="rectifyEntry('${truckNo}', '${entryDate}', ${metrics.Start_KM}, ${metrics.Finish_KM})" class="text-blue-600 hover:text-blue-800 font-medium text-xs" title="Rectify Entry">📝 Edit</button>
+                                        <button onclick="deleteEntry('${truckNo}', '${entryDate}')" class="text-red-600 hover:text-red-800 font-medium text-xs" title="Purge Entry">❌ Del</button>
+                                    </td>
+                                </tr>
+                            `;
+                            tableBody.insertAdjacentHTML('beforeend', row);
+                        });
+                    });
+                }
+                
+                if (dataFound) {
+                    const summaryRow = `
+                        <tr class="bg-blue-50 font-extrabold tracking-wide">
+                            <td colspan="4" class="px-3 py-3 text-right text-gray-700 border border-gray-300 uppercase text-xs tracking-wider">Total Month Run:</td>
+                            <td colspan="2" class="px-3 py-3 text-blue-800 text-base border border-gray-300">${calculatedMonthAccumTotal.toFixed(1)}</td>
+                        </tr>
+                    `;
+                    tableBody.insertAdjacentHTML('beforeend', summaryRow);
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-400 border border-gray-300">No telemetry records logged for this time segment.</td></tr>';
+                }
+            });
+        }
+
+        function resetFilter() {
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterTruckNo').value = '';
+            loadRecordsTable();
+        }
+
+        function exportToCSV() {
+            const targetMonth = getYearMonthKey(document.getElementById('entryDate').value);
+            db.ref(`Monthly_Records/${targetMonth}`).once('value').then((snapshot) => {
+                if (!snapshot.exists()) {
+                    alert("No data values found in the active workspace context to export.");
+                    return;
+                }
+
+                let uniqueDaysSet = new Set();
+                let trucksDataMap = {};
+
+                snapshot.forEach((truckSnap) => {
+                    const truckNo = truckSnap.key;
+                    trucksDataMap[truckNo] = {};
+                    
+                    truckSnap.forEach((dateSnap) => {
+                        const logDate = dateSnap.key; 
+                        const dayNum = parseInt(logDate.split('-')[2], 10); 
+                        uniqueDaysSet.add(dayNum);
+                        trucksDataMap[truckNo][dayNum] = {
+                            start: dateSnap.val().Start_KM,
+                            finish: dateSnap.val().Finish_KM,
+                            run: dateSnap.val().Total_Run
+                        };
+                    });
+                });
+
+                let sortedDays = Array.from(uniqueDaysSet).sort((a, b) => a - b);
+
+                let row1 = ['dates-'];
+                for (let d of sortedDays) {
+                    row1.push(d, '', ''); 
+                }
+                row1.push('Monthly Summary'); 
+
+                let row2 = ['Truck Number'];
+                for (let d of sortedDays) {
+                    row2.push('Start KM', 'Finish KM', 'Total Run Run');
+                }
+                row2.push('Total Monthly Run'); 
+
+                let csvRows = [row1, row2];
+
+                Object.keys(trucksDataMap).sort().forEach((truckNo) => {
+                    let truckRow = [truckNo];
+                    let truckMonthTotalSum = 0;
+                    
+                    sortedDays.forEach((dayNum) => {
+                        let dayData = trucksDataMap[truckNo][dayNum];
+                        if (dayData) {
+                            truckRow.push(dayData.start, dayData.finish, dayData.run);
+                            truckMonthTotalSum += parseFloat(dayData.run) || 0;
+                        } else {
+                            truckRow.push('', '', ''); 
+                        }
+                    });
+                    
+                    truckRow.push(truckMonthTotalSum.toFixed(1)); 
+                    csvRows.push(truckRow);
+                });
+
+                const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.map(val => `"${val}"`).join(",")).join("\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `Diesel_Log_Horizontal_${targetMonth}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+
+        function importFromCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split("\n").map(row => row.split(","));
+                const updates = {};
+                let count = 0;
+
+                for (let i = 1; i < rows.length; i++) {
+                    const [truckNo, logDate, startKM, finishKM, totalRun] = rows[i].map(val => val?.replace(/"/g, '').trim());
+                    if (!truckNo || !logDate) continue;
+
+                    const targetMonth = logDate.substring(0, 7).replace("-", "_");
+                    
+                    updates[`Monthly_Records/${targetMonth}/${truckNo}/${logDate}`] = {
+                        Start_KM: parseFloat(startKM) || 0,
+                        Finish_KM: parseFloat(finishKM) || 0,
+                        Total_Run: parseFloat(totalRun) || 0,
+                        Timestamp: firebase.database.ServerValue.TIMESTAMP
+                    };
+
+                    updates[`Trucks_Master/${truckNo}`] = {
+                        Last_KM_Reading: parseFloat(finishKM) || 0,
+                        Last_Filled_Date: logDate,
+                        Last_Total_Run: parseFloat(totalRun) || 0
+                    };
+                    count++;
+                }
+
+                if (count > 0) {
+                    db.ref().update(updates).then(() => {
+                        alert(`Successfully imported ${count} tracking logs.`);
+                        loadRecordsTable();
+                    });
+                } else {
+                    alert("Import file parse mismatch. Verify header mapping properties.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function rolloverToNextMonth() {
+            if (!confirm("Execute month boundary rollover parameters?")) return;
+
+            db.ref('Trucks_Master').once('value').then((snapshot) => {
+                if (!snapshot.exists()) {
+                    alert("No Master nodes defined to execute rollover workflows.");
+                    return;
+                }
+
+                const baseDate = new Date(document.getElementById('entryDate').value);
+                baseDate.setMonth(baseDate.getMonth() + 1);
+                const nextMonthKey = getYearMonthKey(baseDate);
+                const nextMonthDateKey = baseDate.toISOString().split('T')[0];
+
+                const updates = {};
+                snapshot.forEach((truckSnap) => {
+                    const truckNo = truckSnap.key;
+                    const currentMaster = truckSnap.val();
+
+                    updates[`Monthly_Records/${nextMonthKey}/${truckNo}/${nextMonthDateKey}`] = {
+                        Start_KM: currentMaster.Last_KM_Reading,
+                        Finish_KM: currentMaster.Last_KM_Reading,
+                        Total_Run: 0,
+                        Timestamp: firebase.database.ServerValue.TIMESTAMP
+                    };
+                });
+
+                db.ref().update(updates).then(() => {
+                    alert(`Rollover execution completed for key segment: ${nextMonthKey}`);
+                    loadRecordsTable();
+                });
+            });
+        }
+
+        window.onload = function() {
+            verifyActiveSessionState();
+            loadRecordsTable();
+        };
+    </script>
+</body>
+</html>
