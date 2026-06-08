@@ -22,8 +22,11 @@
             appId: "1:902065775203:web:7692fc74ad9a8099c54e56",
             measurementId: "G-KYZJ890FWF"
         };
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
+        
+        // Universal browser safety initialization loop
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.database();
     </script>
 
@@ -376,7 +379,6 @@
             document.getElementById('lastKM').innerText = startKM;
             document.getElementById('todayKM').value = finishKM;
             
-            // Re-fetch historical baseline for full synchronization context tracking
             db.ref(`Trucks_Master/${truckNo}`).once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     document.getElementById('lastDate').innerText = snapshot.val().Last_Filled_Date || '-';
@@ -393,10 +395,7 @@
 
             const targetMonth = getYearMonthKey(dateLog);
             
-            // Step 1: Remove targeted node structure from current monthly timeline tree branch
             db.ref(`Monthly_Records/${targetMonth}/${truckNo}/${dateLog}`).remove().then(() => {
-                
-                // Step 2: Query remaining logs for the same truck to correctly re-assign Master balances
                 db.ref(`Monthly_Records/${targetMonth}/${truckNo}`).orderByKey().limitToLast(1).once('value').then((snapshot) => {
                     if (snapshot.exists()) {
                         let lastAvailableDate = "";
@@ -407,14 +406,12 @@
                             lastAvailableMetrics = child.val();
                         });
 
-                        // Rollback configuration indexes to the nearest matching previous entry state data
                         db.ref(`Trucks_Master/${truckNo}`).set({
                             Last_KM_Reading: lastAvailableMetrics.Finish_KM,
                             Last_Filled_Date: lastAvailableDate,
                             Last_Total_Run: lastAvailableMetrics.Total_Run
                         });
                     } else {
-                        // Completely wipe Master baseline profile tracker details if no log records remain
                         db.ref(`Trucks_Master/${truckNo}`).remove();
                     }
                     
