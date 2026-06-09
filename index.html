@@ -115,6 +115,10 @@
                             <span class="text-gray-500">Last Meter Reading (KM):</span>
                             <span id="lastKM" class="font-bold text-gray-700">0</span>
                         </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Last Filled Diesel (Ltrs):</span>
+                            <span id="lastDiesel" class="font-bold text-gray-700">0</span>
+                        </div>
                         <div class="flex justify-between border-t pt-1 mt-1">
                             <span class="text-gray-500">Last Run Kilometre:</span>
                             <span id="lastRunKM" class="font-bold text-blue-700">0</span>
@@ -124,6 +128,11 @@
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-600 mb-1">Today's Meter Reading (KM)</label>
                         <input type="number" id="todayKM" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter finish KM" oninput="calculateTotalRun()">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Today's Diesel Filled (Liters)</label>
+                        <input type="number" step="0.01" id="todayDiesel" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter diesel in liters">
                     </div>
 
                     <div class="mb-6">
@@ -167,12 +176,13 @@
                     <table class="min-w-full table-fixed divide-y divide-gray-300 text-sm border-collapse">
                         <thead class="bg-gray-100 sticky top-0 z-10">
                             <tr>
-                                <th class="w-[18%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Truck No</th>
-                                <th class="w-[20%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Date</th>
-                                <th class="w-[18%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Start KM</th>
-                                <th class="w-[18%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Finish KM</th>
-                                <th class="w-[16%] px-3 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Total Run</th>
-                                <th class="w-[10%] px-2 py-3 text-center font-semibold text-gray-600 tracking-wider border border-gray-300">Action</th>
+                                <th class="w-[14%] px-2 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Truck No</th>
+                                <th class="w-[16%] px-2 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Date</th>
+                                <th class="w-[14%] px-2 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Start KM</th>
+                                <th class="w-[14%] px-2 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Finish KM</th>
+                                <th class="w-[14%] px-2 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Total Run</th>
+                                <th class="w-[16%] px-2 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Diesel (Ltr)</th>
+                                <th class="w-[12%] px-1 py-3 text-center font-semibold text-gray-600 tracking-wider border border-gray-300">Action</th>
                             </tr>
                         </thead>
                         <tbody id="recordsTableBody" class="bg-white divide-y divide-gray-200">
@@ -306,6 +316,7 @@
                     const data = snapshot.val();
                     document.getElementById('lastDate').innerText = data.Last_Filled_Date || '-';
                     document.getElementById('lastKM').innerText = data.Last_KM_Reading || '0';
+                    document.getElementById('lastDiesel').innerText = data.Last_Diesel_Reading || '0';
                     document.getElementById('lastRunKM').innerText = data.Last_Total_Run || '0';
                 } else {
                     clearMasterFields();
@@ -317,6 +328,7 @@
         function clearMasterFields() {
             document.getElementById('lastDate').innerText = '-';
             document.getElementById('lastKM').innerText = '0';
+            document.getElementById('lastDiesel').innerText = '0';
             document.getElementById('lastRunKM').innerText = '0';
         }
 
@@ -337,6 +349,7 @@
             const truckNo = document.getElementById('truckNo').value.trim();
             const lastKM = parseFloat(document.getElementById('lastKM').innerText) || 0;
             const todayKM = parseFloat(document.getElementById('todayKM').value);
+            const todayDiesel = parseFloat(document.getElementById('todayDiesel').value) || 0;
             const totalRun = parseFloat(document.getElementById('totalRunDisplay').innerText);
             const currentMonth = getYearMonthKey(selectedDate);
 
@@ -349,13 +362,15 @@
                 Start_KM: lastKM,
                 Finish_KM: todayKM,
                 Total_Run: totalRun,
+                Diesel_Filled: todayDiesel,
                 Timestamp: firebase.database.ServerValue.TIMESTAMP
             };
 
             const masterUpdate = {
                 Last_KM_Reading: todayKM,
                 Last_Filled_Date: selectedDate,
-                Last_Total_Run: totalRun
+                Last_Total_Run: totalRun,
+                Last_Diesel_Reading: todayDiesel
             };
 
             const updates = {};
@@ -366,6 +381,7 @@
                 alert(`Record committed successfully for Truck ${truckNo}!`);
                 document.getElementById('truckNo').value = '';
                 document.getElementById('todayKM').value = '';
+                document.getElementById('todayDiesel').value = '';
                 clearMasterFields();
                 document.getElementById('totalRunDisplay').innerText = '0';
                 loadRecordsTable();
@@ -373,16 +389,18 @@
         }
 
         // Rectification and Overwrite Execution Engine
-        function rectifyEntry(truckNo, dateLog, startKM, finishKM) {
+        function rectifyEntry(truckNo, dateLog, startKM, finishKM, dieselFilled) {
             document.getElementById('entryDate').value = dateLog;
             document.getElementById('truckNo').value = truckNo;
             document.getElementById('lastKM').innerText = startKM;
             document.getElementById('todayKM').value = finishKM;
+            document.getElementById('todayDiesel').value = dieselFilled || 0;
             
             db.ref(`Trucks_Master/${truckNo}`).once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     document.getElementById('lastDate').innerText = snapshot.val().Last_Filled_Date || '-';
                     document.getElementById('lastRunKM').innerText = snapshot.val().Last_Total_Run || '0';
+                    document.getElementById('lastDiesel').innerText = snapshot.val().Last_Diesel_Reading || '0';
                 }
                 calculateTotalRun();
                 document.getElementById('todayKM').focus();
@@ -409,7 +427,8 @@
                         db.ref(`Trucks_Master/${truckNo}`).set({
                             Last_KM_Reading: lastAvailableMetrics.Finish_KM,
                             Last_Filled_Date: lastAvailableDate,
-                            Last_Total_Run: lastAvailableMetrics.Total_Run
+                            Last_Total_Run: lastAvailableMetrics.Total_Run,
+                            Last_Diesel_Reading: lastAvailableMetrics.Diesel_Filled || 0
                         });
                     } else {
                         db.ref(`Trucks_Master/${truckNo}`).remove();
@@ -427,7 +446,7 @@
             const filterDate = document.getElementById('filterDate').value; 
             const filterTruckNo = document.getElementById('filterTruckNo').value.trim().toLowerCase();
             const tableBody = document.getElementById('recordsTableBody');
-            tableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-400 border border-gray-300">Loading records context...</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7" class="px-4 py-4 text-center text-gray-400 border border-gray-300">Loading records context...</td></tr>';
 
             let targetMonth = getYearMonthKey(document.getElementById('entryDate').value || new Date());
             if (filterDate) {
@@ -438,6 +457,7 @@
                 tableBody.innerHTML = '';
                 let dataFound = false;
                 let calculatedMonthAccumTotal = 0;
+                let calculatedDieselAccumTotal = 0;
 
                 if (snapshot.exists()) {
                     snapshot.forEach((truckSnap) => {
@@ -453,16 +473,18 @@
                             const metrics = dateSnap.val();
                             dataFound = true;
                             calculatedMonthAccumTotal += parseFloat(metrics.Total_Run) || 0;
+                            calculatedDieselAccumTotal += parseFloat(metrics.Diesel_Filled) || 0;
 
                             const row = `
                                 <tr class="hover:bg-gray-50 transition">
-                                    <td class="px-3 py-2.5 font-semibold text-gray-700 border border-gray-300">${truckNo}</td>
-                                    <td class="px-3 py-2.5 text-gray-500 border border-gray-300">${entryDate}</td>
-                                    <td class="px-3 py-2.5 text-gray-600 border border-gray-300">${metrics.Start_KM}</td>
-                                    <td class="px-3 py-2.5 text-gray-600 border border-gray-300">${metrics.Finish_KM}</td>
-                                    <td class="px-3 py-2.5 font-bold text-blue-700 border border-gray-300">${metrics.Total_Run}</td>
-                                    <td class="px-2 py-2.5 text-center border border-gray-300 whitespace-nowrap space-x-2">
-                                        <button onclick="rectifyEntry('${truckNo}', '${entryDate}', ${metrics.Start_KM}, ${metrics.Finish_KM})" class="text-blue-600 hover:text-blue-800 font-medium text-xs" title="Rectify Entry">📝 Edit</button>
+                                    <td class="px-2 py-2.5 font-semibold text-gray-700 border border-gray-300">${truckNo}</td>
+                                    <td class="px-2 py-2.5 text-gray-500 border border-gray-300">${entryDate}</td>
+                                    <td class="px-2 py-2.5 text-gray-600 border border-gray-300">${metrics.Start_KM}</td>
+                                    <td class="px-2 py-2.5 text-gray-600 border border-gray-300">${metrics.Finish_KM}</td>
+                                    <td class="px-2 py-2.5 font-bold text-blue-700 border border-gray-300">${metrics.Total_Run}</td>
+                                    <td class="px-2 py-2.5 font-bold text-purple-700 border border-gray-300">${metrics.Diesel_Filled || 0}</td>
+                                    <td class="px-1 py-2.5 text-center border border-gray-300 whitespace-nowrap space-x-1">
+                                        <button onclick="rectifyEntry('${truckNo}', '${entryDate}', ${metrics.Start_KM}, ${metrics.Finish_KM}, ${metrics.Diesel_Filled || 0})" class="text-blue-600 hover:text-blue-800 font-medium text-xs" title="Rectify Entry">📝 Edit</button>
                                         <button onclick="deleteEntry('${truckNo}', '${entryDate}')" class="text-red-600 hover:text-red-800 font-medium text-xs" title="Purge Entry">❌ Del</button>
                                     </td>
                                 </tr>
@@ -474,14 +496,15 @@
                 
                 if (dataFound) {
                     const summaryRow = `
-                        <tr class="bg-blue-50 font-extrabold tracking-wide">
-                            <td colspan="4" class="px-3 py-3 text-right text-gray-700 border border-gray-300 uppercase text-xs tracking-wider">Total Month Run:</td>
-                            <td colspan="2" class="px-3 py-3 text-blue-800 text-base border border-gray-300">${calculatedMonthAccumTotal.toFixed(1)}</td>
+                        <tr class="bg-blue-50 font-extrabold tracking-wide text-xs">
+                            <td colspan="4" class="px-2 py-3 text-right text-gray-700 border border-gray-300 uppercase tracking-wider">Totals:</td>
+                            <td class="px-2 py-3 text-blue-800 text-sm border border-gray-300">${calculatedMonthAccumTotal.toFixed(1)} KM</td>
+                            <td colspan="2" class="px-2 py-3 text-purple-800 text-sm border border-gray-300">${calculatedDieselAccumTotal.toFixed(1)} Ltrs</td>
                         </tr>
                     `;
                     tableBody.insertAdjacentHTML('beforeend', summaryRow);
                 } else {
-                    tableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-400 border border-gray-300">No telemetry records logged for this time segment.</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="7" class="px-4 py-4 text-center text-gray-400 border border-gray-300">No telemetry records logged for this time segment.</td></tr>';
                 }
             });
         }
@@ -514,7 +537,8 @@
                         trucksDataMap[truckNo][dayNum] = {
                             start: dateSnap.val().Start_KM,
                             finish: dateSnap.val().Finish_KM,
-                            run: dateSnap.val().Total_Run
+                            run: dateSnap.val().Total_Run,
+                            diesel: dateSnap.val().Diesel_Filled || 0
                         };
                     });
                 });
@@ -523,33 +547,35 @@
 
                 let row1 = ['dates-'];
                 for (let d of sortedDays) {
-                    row1.push(d, '', ''); 
+                    row1.push(d, '', '', ''); 
                 }
-                row1.push('Monthly Summary'); 
+                row1.push('Monthly Summary', ''); 
 
                 let row2 = ['Truck Number'];
                 for (let d of sortedDays) {
-                    row2.push('Start KM', 'Finish KM', 'Total Run Run');
+                    row2.push('Start KM', 'Finish KM', 'Total Run', 'Diesel Filled');
                 }
-                row2.push('Total Monthly Run'); 
+                row2.push('Total Monthly Run', 'Total Monthly Diesel'); 
 
                 let csvRows = [row1, row2];
 
                 Object.keys(trucksDataMap).sort().forEach((truckNo) => {
                     let truckRow = [truckNo];
                     let truckMonthTotalSum = 0;
+                    let truckDieselTotalSum = 0;
                     
                     sortedDays.forEach((dayNum) => {
                         let dayData = trucksDataMap[truckNo][dayNum];
                         if (dayData) {
-                            truckRow.push(dayData.start, dayData.finish, dayData.run);
+                            truckRow.push(dayData.start, dayData.finish, dayData.run, dayData.diesel);
                             truckMonthTotalSum += parseFloat(dayData.run) || 0;
+                            truckDieselTotalSum += parseFloat(dayData.diesel) || 0;
                         } else {
-                            truckRow.push('', '', ''); 
+                            truckRow.push('', '', '', ''); 
                         }
                     });
                     
-                    truckRow.push(truckMonthTotalSum.toFixed(1)); 
+                    truckRow.push(truckMonthTotalSum.toFixed(1), truckDieselTotalSum.toFixed(1)); 
                     csvRows.push(truckRow);
                 });
 
@@ -576,7 +602,7 @@
                 let count = 0;
 
                 for (let i = 1; i < rows.length; i++) {
-                    const [truckNo, logDate, startKM, finishKM, totalRun] = rows[i].map(val => val?.replace(/"/g, '').trim());
+                    const [truckNo, logDate, startKM, finishKM, totalRun, dieselFilled] = rows[i].map(val => val?.replace(/"/g, '').trim());
                     if (!truckNo || !logDate) continue;
 
                     const targetMonth = logDate.substring(0, 7).replace("-", "_");
@@ -585,13 +611,15 @@
                         Start_KM: parseFloat(startKM) || 0,
                         Finish_KM: parseFloat(finishKM) || 0,
                         Total_Run: parseFloat(totalRun) || 0,
+                        Diesel_Filled: parseFloat(dieselFilled) || 0,
                         Timestamp: firebase.database.ServerValue.TIMESTAMP
                     };
 
                     updates[`Trucks_Master/${truckNo}`] = {
                         Last_KM_Reading: parseFloat(finishKM) || 0,
                         Last_Filled_Date: logDate,
-                        Last_Total_Run: parseFloat(totalRun) || 0
+                        Last_Total_Run: parseFloat(totalRun) || 0,
+                        Last_Diesel_Reading: parseFloat(dieselFilled) || 0
                     };
                     count++;
                 }
@@ -631,6 +659,7 @@
                         Start_KM: currentMaster.Last_KM_Reading,
                         Finish_KM: currentMaster.Last_KM_Reading,
                         Total_Run: 0,
+                        Diesel_Filled: 0,
                         Timestamp: firebase.database.ServerValue.TIMESTAMP
                     };
                 });
