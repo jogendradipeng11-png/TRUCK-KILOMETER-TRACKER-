@@ -297,9 +297,6 @@
         // DATA LOGISTICS PIPELINE MANAGEMENT ENGINES
         document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
 
-        // Global flag to track edit status
-        let isEditingMode = false;
-
         function getYearMonthKey(dateStr) {
             const dateObj = new Date(dateStr);
             const year = dateObj.getFullYear();
@@ -361,22 +358,6 @@
                 return;
             }
 
-            // GLOBAL TRUCK NO DUPLICATE VERIFICATION CHECK
-            // Checks if this truck number exists anywhere in the continuous ledger system
-            if (!isEditingMode) {
-                db.ref(`Trucks_Master/${truckNo}`).once('value').then((snapshot) => {
-                    if (snapshot.exists()) {
-                        alert(`Double Entry Error: Truck ${truckNo} already has a record saved in the system. Duplicate truck numbers are not allowed on this sheet.`);
-                    } else {
-                        commitRecordUpdates(currentMonth, truckNo, selectedDate, lastKM, todayKM, todayDiesel, totalRun);
-                    }
-                });
-            } else {
-                commitRecordUpdates(currentMonth, truckNo, selectedDate, lastKM, todayKM, todayDiesel, totalRun);
-            }
-        }
-
-        function commitRecordUpdates(currentMonth, truckNo, selectedDate, lastKM, todayKM, todayDiesel, totalRun) {
             const recordEntry = {
                 Start_KM: lastKM,
                 Finish_KM: todayKM,
@@ -403,14 +384,12 @@
                 document.getElementById('todayDiesel').value = '';
                 clearMasterFields();
                 document.getElementById('totalRunDisplay').innerText = '0';
-                isEditingMode = false; // Reset editing mode
                 loadRecordsTable();
             }).catch(err => alert("Error syncing configuration with database: " + err.message));
         }
 
         // Rectification and Overwrite Execution Engine
         function rectifyEntry(truckNo, dateLog, startKM, finishKM, dieselFilled) {
-            isEditingMode = true; // Set flag to true to bypass duplicate lock checking during active edits
             document.getElementById('entryDate').value = dateLog;
             document.getElementById('truckNo').value = truckNo;
             document.getElementById('lastKM').innerText = startKM;
@@ -456,7 +435,6 @@
                     }
                     
                     alert("Log entry purged successfully from database context.");
-                    isEditingMode = false;
                     loadRecordsTable();
                 });
             }).catch(err => alert("Deletion script runtime error: " + err.message));
