@@ -176,8 +176,8 @@
 
                 <div class="overflow-x-auto flex-grow max-h-[420px] border border-gray-300 rounded-md">
                     <table class="min-w-full table-fixed divide-y divide-gray-300 text-sm border-collapse">
-                        <head class="bg-gray-100 sticky top-0 z-10">
-                            <tr>
+                        <thead>
+                            <tr class="bg-gray-100 sticky top-0 z-10">
                                 <th class="w-[12%] px-2 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Truck No</th>
                                 <th class="w-[20%] px-2 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Date & Time</th>
                                 <th class="w-[13%] px-2 py-3 text-left font-semibold text-gray-600 tracking-wider border border-gray-300">Start KM</th>
@@ -300,6 +300,7 @@
         document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
 
         function getYearMonthKey(dateStr) {
+            if(!dateStr) return '';
             const dateObj = new Date(dateStr);
             const year = dateObj.getFullYear();
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -355,16 +356,20 @@
             const totalRun = parseFloat(document.getElementById('totalRunDisplay').innerText);
             const currentMonth = getYearMonthKey(selectedDate);
             
-            // Generate standard date-time string layout
-            const currentTImeString = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-            const fullDateTimeStamp = `${selectedDate} ${currentTImeString}`;
+            // Build absolute dynamic timestamp strings securely
+            const timeObj = new Date();
+            const timeString = [
+                String(timeObj.getHours()).padStart(2, '0'),
+                String(timeObj.getMinutes()).padStart(2, '0'),
+                String(timeObj.getSeconds()).padStart(2, '0')
+            ].join(':');
+            const fullDateTimeStamp = `${selectedDate} ${timeString}`;
 
             if (todayKM < lastKM) {
                 alert("Error: Today's reading cannot be lower than the previous odometer baseline.");
                 return;
             }
 
-            // Generate an isolated tracking ID key or reference old entry if updating
             let logNodeId = document.getElementById('rectifyLogId').value;
             if(!logNodeId) {
                 logNodeId = db.ref().child(`Monthly_Records/${currentMonth}/${truckNo}`).push().key;
@@ -404,7 +409,6 @@
             }).catch(err => alert("Error syncing configuration with database: " + err.message));
         }
 
-        // Rectification and Overwrite Execution Engine
         function rectifyEntry(truckNo, monthKey, logId, dateLog, startKM, finishKM, dieselFilled) {
             document.getElementById('entryDate').value = dateLog;
             document.getElementById('truckNo').value = truckNo;
@@ -424,7 +428,6 @@
             });
         }
 
-        // Unwanted Entry Deletion Pipeline Execution Routines
         function deleteEntry(truckNo, monthKey, logId) {
             if (!confirm(`Are you sure you want to permanently delete this log entry for Truck ${truckNo}?`)) return;
             
@@ -438,7 +441,7 @@
 
                         db.ref(`Trucks_Master/${truckNo}`).set({
                             Last_KM_Reading: lastAvailableMetrics.Finish_KM,
-                            Last_Filled_Date: lastAvailableMetrics.Date_Time_Filled,
+                            Last_Filled_Date: lastAvailableMetrics.Date_Time_Filled || lastAvailableMetrics.Date_Log,
                             Last_Total_Run: lastAvailableMetrics.Total_Run,
                             Last_Diesel_Reading: lastAvailableMetrics.Diesel_Filled || 0
                         });
@@ -477,7 +480,6 @@
                         
                         if (filterTruckNo && !truckNo.toLowerCase().includes(filterTruckNo)) return;
 
-                        // Sort the individual records based on timestamp chronology
                         let itemsArray = [];
                         truckSnap.forEach((dateSnap) => {
                             itemsArray.push(dateSnap.val());
@@ -485,8 +487,8 @@
                         itemsArray.sort((a, b) => (a.Timestamp || 0) - (b.Timestamp || 0));
 
                         itemsArray.forEach((metrics) => {
-                            const entryDate = metrics.Date_Log;
-                            const displayDateTime = metrics.Date_Time_Filled || entryDate;
+                            const entryDate = metrics.Date_Log || '';
+                            const displayDateTime = metrics.Date_Time_Filled || entryDate || '-';
                             const logId = metrics.Log_ID;
                             
                             if (filterDate && filterDate !== entryDate) return;
@@ -540,7 +542,7 @@
         }
 
         function exportToCSV() {
-            const targetMonth = getYearMonthKey(document.getElementById('entryDate').value);
+            const targetMonth = getYearMonthKey(document.getElementById('entryDate').value || new Date());
             db.ref(`Monthly_Records/${targetMonth}`).once('value').then((snapshot) => {
                 if (!snapshot.exists()) {
                     alert("No data values found in the active workspace context to export.");
@@ -556,7 +558,7 @@
                         csvRows.push([
                             data.Log_ID || '',
                             truckNo,
-                            data.Date_Time_Filled || data.Date_Log,
+                            data.Date_Time_Filled || data.Date_Log || '',
                             data.Start_KM,
                             data.Finish_KM,
                             data.Total_Run,
@@ -591,7 +593,8 @@
                     let [logId, truckNo, dateTimeFilled, startKM, finishKM, totalRun, dieselFilled] = rows[i].map(val => val?.replace(/"/g, '').trim());
                     if (!truckNo || !dateTimeFilled) continue;
 
-                    const dateLog = dateTimeFilled.split(' ')[0];
+                    const dateLog = dateTimeFilled.split(' ')[0] || '';
+                    if(!dateLog) continue;
                     const targetMonth = dateLog.substring(0, 7).replace("-", "_");
                     
                     if(!logId) {
@@ -639,7 +642,7 @@
                     return;
                 }
 
-                const baseDate = new Date(document.getElementById('entryDate').value);
+                const baseDate = new Date(document.getElementById('entryDate').value || new Date());
                 baseDate.setMonth(baseDate.getMonth() + 1);
                 const nextMonthKey = getYearMonthKey(baseDate);
                 const nextMonthDateKey = baseDate.toISOString().split('T')[0];
