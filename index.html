@@ -356,7 +356,6 @@
             const totalRun = parseFloat(document.getElementById('totalRunDisplay').innerText);
             const currentMonth = getYearMonthKey(selectedDate);
             
-            // Build absolute dynamic timestamp strings securely
             const timeObj = new Date();
             const timeString = [
                 String(timeObj.getHours()).padStart(2, '0'),
@@ -482,12 +481,23 @@
 
                         let itemsArray = [];
                         truckSnap.forEach((dateSnap) => {
-                            itemsArray.push(dateSnap.val());
+                            let itemVal = dateSnap.val();
+                            
+                            // FALLBACK FIX: If old entry where key is the date, map it manually
+                            if (!itemVal.Date_Log) {
+                                itemVal.Date_Log = dateSnap.key;
+                            }
+                            if (!itemVal.Log_ID) {
+                                itemVal.Log_ID = dateSnap.key;
+                            }
+                            
+                            itemsArray.push(itemVal);
                         });
                         itemsArray.sort((a, b) => (a.Timestamp || 0) - (b.Timestamp || 0));
 
                         itemsArray.forEach((metrics) => {
                             const entryDate = metrics.Date_Log || '';
+                            // Fallback to entryDate if Date_Time_Filled doesn't exist
                             const displayDateTime = metrics.Date_Time_Filled || entryDate || '-';
                             const logId = metrics.Log_ID;
                             
@@ -555,10 +565,12 @@
                     const truckNo = truckSnap.key;
                     truckSnap.forEach((dateSnap) => {
                         const data = dateSnap.val();
+                        const entryDate = data.Date_Log || dateSnap.key;
+                        const displayDateTime = data.Date_Time_Filled || entryDate || '';
                         csvRows.push([
-                            data.Log_ID || '',
+                            data.Log_ID || dateSnap.key,
                             truckNo,
-                            data.Date_Time_Filled || data.Date_Log || '',
+                            displayDateTime,
                             data.Start_KM,
                             data.Finish_KM,
                             data.Total_Run,
